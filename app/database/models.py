@@ -17,12 +17,54 @@ class Base(DeclarativeBase):
     pass
 
 
-class Subject(Base):
-    __tablename__ = "subjects"
+class Course(Base):
+    __tablename__ = "courses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
-    name: Mapped[str] = mapped_column(String(100))
+    title: Mapped[str] = mapped_column(String(200))
+    provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow
+    )
+
+
+class Module(Base):
+    __tablename__ = "modules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("courses.id"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="not_started")
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("modules.id"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    item_type: Mapped[str] = mapped_column(
+        String(20), default="text"
+    )
+    content_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(
+        String(20), default="not_started"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow
     )
@@ -33,20 +75,35 @@ class Task(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
-    subject_id: Mapped[int | None] = mapped_column(
-        ForeignKey("subjects.id"), nullable=True
+
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id"), nullable=True
+    )
+    lesson_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lessons.id"), nullable=True
     )
 
     title: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True
     )
-    status: Mapped[str] = mapped_column(
-        String(20), default="pending"
+    priority: Mapped[str] = mapped_column(String(20), default="medium")
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow
     )
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    repo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow
     )
@@ -57,14 +114,15 @@ class StudySession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
-    subject_id: Mapped[int | None] = mapped_column(
-        ForeignKey("subjects.id"), nullable=True
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id"), nullable=True
+    )
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"), nullable=True
     )
     started_at: Mapped[datetime] = mapped_column(DateTime)
     duration_minutes: Mapped[int] = mapped_column(Integer)
-    note: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class UserSettings(Base):
@@ -73,8 +131,9 @@ class UserSettings(Base):
     user_id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True
     )
-    timezone: Mapped[str] = mapped_column(
-        String(50), default="UTC"
+    timezone: Mapped[str] = mapped_column(String(50), default="UTC")
+    daily_goal_minutes: Mapped[int] = mapped_column(
+        Integer, default=60
     )
     reminder_time: Mapped[str] = mapped_column(
         String(5), default="17:00"
@@ -82,6 +141,3 @@ class UserSettings(Base):
     reminders_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True
     )
-
-    def __repr__(self) -> str:
-        return f"UserSettings(user_id={self.user_id}, timezone={self.timezone})"
