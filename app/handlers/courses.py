@@ -17,6 +17,25 @@ from app.states.course_states import AddCourse
 router = Router()
 
 
+def get_module_keyboard(module_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📂 Открыть модуль",
+                    callback_data=f"module_open:{module_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="➕ Добавить подмодуль",
+                    callback_data=f"module_add_child:{module_id}",
+                )
+            ],
+        ]
+    )
+
+
 @router.message(F.text == "📚 Мои курсы")
 async def show_courses(message: Message):
     async with async_session() as session:
@@ -54,6 +73,9 @@ async def show_courses(message: Message):
         if course.url:
             text += f"🔗 Ссылка: {course.url}\n"
 
+        if course.description:
+            text += f"📝 Описание: {course.description}\n"
+
         status = "Активен" if course.status == "active" else course.status
         text += f"Статус: {status}"
 
@@ -65,52 +87,61 @@ async def open_course(callback: CallbackQuery):
     course_id = int(callback.data.split(":")[1])
 
     async with async_session() as session:
-        result = await session.execute(
+        course = await session.scalar(
             select(Course).where(
                 Course.id == course_id,
                 Course.user_id == callback.from_user.id,
             )
         )
-        course = result.scalar_one_or_none()
 
-        if course is None:
+        if not course:
             await callback.answer("Курс не найден.", show_alert=True)
             return
 
-        modules_result = await session.execute(
-            select(Module)
-            .where(
-                Module.course_id == course.id,
-                Module.user_id == callback.from_user.id,
+        modules = (
+            await session.scalars(
+                select(Module)
+                .where(
+                    Module.course_id == course_id,
+                    Module.user_id == callback.from_user.id,
+                    Module.parent_id.is_(None),
+                )
+                .order_by(Module.position, Module.id)
             )
-            .order_by(Module.position, Module.id)
-        )
-        modules = modules_result.scalars().all()
+        ).all()
 
-    text = f"📘 Курс: {course.title}\n\n"
+        course_title = course.title
+        module_data = [(m.id, m.title) for m in modules]
 
-    if course.description:
-        text += f"📝 {course.description}\n\n"
+    text = f"📘 Курс: {course_title}\n\n"
 
-    if not modules:
+    if not module_data:
         text += "В этом курсе пока нет модулей."
     else:
-        text += "📚 Модули курса:\n\n"
-        for index, module in enumerate(modules, start=1):
-            text += f"{index}. {module.title}\n"
+        text += "📚 Основные модули:"
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="➕ Добавить модуль",
-                    callback_data=f"module_add:{course.id}",
-                )
+    await callback.message.answer(text)
+
+    for module_id, module_title in module_data:
+        await callback.message.answer(
+            f"📁 {module_title}",
+            reply_markup=get_module_keyboard(module_id),
+        )
+
+    await callback.message.answer(
+        "Добавить новый основной модуль:",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="➕ Добавить модуль",
+                        callback_data=f"module_add:{course_id}",
+                    )
+                ]
             ]
-        ]
+        ),
     )
 
-    await callback.message.answer(text, reply_markup=keyboard)
     await callback.answer()
 
 

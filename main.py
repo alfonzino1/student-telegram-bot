@@ -12,7 +12,6 @@ from app.handlers.start import router as start_router
 from app.handlers.tasks import router as tasks_router
 from app.handlers.courses import router as courses_router
 from app.handlers.modules import router as modules_router
-
 async def main():
     logging.basicConfig(level=logging.INFO)
 

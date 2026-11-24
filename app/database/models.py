@@ -37,9 +37,17 @@ class Module(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+
     course_id: Mapped[int] = mapped_column(
         ForeignKey("courses.id"), index=True
     )
+
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("modules.id"),
+        nullable=True,
+        index=True,
+    )
+
     title: Mapped[str] = mapped_column(String(200))
     position: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="not_started")
@@ -50,13 +58,13 @@ class Lesson(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+
     module_id: Mapped[int] = mapped_column(
         ForeignKey("modules.id"), index=True
     )
+
     title: Mapped[str] = mapped_column(String(200))
-    item_type: Mapped[str] = mapped_column(
-        String(20), default="text"
-    )
+    item_type: Mapped[str] = mapped_column(String(20), default="text")
     content_url: Mapped[str | None] = mapped_column(
         String(500), nullable=True
     )
@@ -114,12 +122,14 @@ class StudySession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+
     course_id: Mapped[int | None] = mapped_column(
         ForeignKey("courses.id"), nullable=True
     )
     project_id: Mapped[int | None] = mapped_column(
         ForeignKey("projects.id"), nullable=True
     )
+
     started_at: Mapped[datetime] = mapped_column(DateTime)
     duration_minutes: Mapped[int] = mapped_column(Integer)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
